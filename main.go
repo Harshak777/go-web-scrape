@@ -1,40 +1,25 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/gocolly/colly"
 )
 
-// defining a data structure to store the scraped data
+// initializing a data structure to keep the scraped data
 type PokemonProduct struct {
 	url, image, name, price string
 }
 
 func main() {
-	// initializing the slice of structs that will contain the scraped data
 	var pokemonProducts []PokemonProduct
 
 	c := colly.NewCollector()
-	c.Visit("https://scrapeme.live/shop/")
-
-	c.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting: ", r.URL)
-	})
-
-	c.OnError(func(_ *colly.Response, err error) {
-		log.Println("Something went wrong: ", err)
-	})
-
-	c.OnResponse(func(r *colly.Response) {
-		fmt.Println("Page visited: ", r.Request.URL)
-	})
 
 	c.OnHTML("li.product", func(e *colly.HTMLElement) {
-		// printing all URLs associated with the a links in the page
-		fmt.Printf("%v\n", e.Attr("href"))
-
 		pokemonProduct := PokemonProduct{}
 
 		pokemonProduct.url = e.ChildAttr("a", "href")
@@ -42,11 +27,49 @@ func main() {
 		pokemonProduct.name = e.ChildText("h2")
 		pokemonProduct.price = e.ChildText(".price")
 
+		fmt.Println(pokemonProduct.name)
+
 		pokemonProducts = append(pokemonProducts, pokemonProduct)
 	})
 
-	c.OnScraped(func(r *colly.Response) {
-		fmt.Println(r.Request.URL, " scraped!")
-	})
+	err := c.Visit("https://scrapeme.live/shop/")
 
+	if err != nil {
+		log.Printf("failed to visit url: %v\n", err)
+		return
+	}
+
+	// opening the CSV file
+	file, err := os.Create("products.csv")
+	if err != nil {
+		log.Fatalln("Failed to create output CSV file", err)
+	}
+	defer file.Close()
+
+	// initializing a file writer
+	writer := csv.NewWriter(file)
+
+	// writing the CSV headers
+	headers := []string{
+		"url",
+		"image",
+		"name",
+		"price",
+	}
+	writer.Write(headers)
+
+	// writing each Pokemon product as a CSV row
+	for _, pokemonProduct := range pokemonProducts {
+		// converting a PokemonProduct to an array of strings
+		record := []string{
+			pokemonProduct.url,
+			pokemonProduct.image,
+			pokemonProduct.name,
+			pokemonProduct.price,
+		}
+
+		// adding a CSV record to the output file
+		writer.Write(record)
+	}
+	defer writer.Flush()
 }
