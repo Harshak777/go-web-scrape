@@ -9,7 +9,7 @@ import (
 
 func main() {
 	c := colly.NewCollector()
-	c.Visit("https://www.walmart.com/search?q=banana")
+	c.Visit("https://scrapeme.live/shop/")
 
 	c.OnRequest(func(r *colly.Request) {
 		fmt.Println("Visiting: ", r.URL)
